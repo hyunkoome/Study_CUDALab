@@ -1,0 +1,12 @@
+[
+    {
+        "key": "ctrl+alt+c",
+        "command": "workbench.action.debug.start",
+        "when": "editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+alt+u",
+        "command": "workbench.action.debug.start",
+        "when": "editorLangId == cuda-cpp"
+    }
+]

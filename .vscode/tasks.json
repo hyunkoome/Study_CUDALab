@@ -1,0 +1,47 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake Configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                "${fileDirname}",
+                "-B",
+                "${fileDirname}/build"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake Build",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${fileDirname}/build"
+            ],
+            "problemMatcher": [],
+            "dependsOn": [
+                "CMake Configure"
+            ]
+        },
+        {
+            "label": "Run Current Binary",
+            "type": "shell",
+            "command": "${fileDirname}/build/${fileBasenameNoExtension}",
+            "args": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "cwd": "${fileDirname}/build"
+            },
+            "problemMatcher": [],
+            "dependsOn": [
+                "CMake Build"
+            ]
+        }
+    ]
+}
