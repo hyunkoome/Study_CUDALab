@@ -1,0 +1,8 @@
+﻿Language: Cpp
+# BasedOnStyle:  LLVM
+TabWidth:        4 # 기본값 8
+IndentWidth:     4 # 기본값 2
+UseTab:          Never # 기본값 Never
+AccessModifierOffset: -2 # 기본값 -2
+ColumnLimit: 100
+SortIncludes: false # 헤더 include 순서에 따라 쿠다 컴파일러 오류 발생 가능
