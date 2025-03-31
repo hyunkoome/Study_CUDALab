@@ -20,6 +20,10 @@ void printVector(const vector<T>& a)
 __global__ void addKernel(const int* a, const int* b, int* c, int size)
 {
 	// int i = threadIdx.x;
+	// blockDim: 블럭 디멘젼: 한 블럭안에 쓰래드가 몇개가 사용이 되냐?
+	// blockIdx: 블럭 인덱스: 몇번째 블럭이냐?
+	// threadIdx: 쓰래드 인덱스: 그 블럭안에서 몇번째 쓰레드 이냐?
+
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < size)
@@ -35,9 +39,11 @@ __global__ void addKernel(const int* a, const int* b, int* c, int size)
 
 int main()
 {
-	const int size = 1024 * 1024 * 256; // 여기서는 블럭을 여러 개 사용해야 하는 큰 size
+	// 여러 쓰래드 뿐 아니라, 여러 블럭 사용하는 예제
+	//const int size = 1024 * 1024 * 256; // 여기서는 블럭을 여러 개 사용해야 하는 큰 size
+	const int size = 1024 * 256; // 여기서는 블럭을 여러 개 사용해야 하는 큰 size
 	//const int size = 37;
-	//const int size = 8;
+	//const int size = 8; // addKernel <<<2, 4>> > (dev_a, dev_b, dev_c, size); // 블럭2개, 쓰래드4개 => 총 8개 쓰래드 사용 시..결과 Correct
 
 	// 생각해볼 점: 블럭이 몇 개가 필요할까?
 
@@ -72,11 +78,17 @@ int main()
 		cudaMemcpy(dev_a, a.data(), size * sizeof(int), cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_b, b.data(), size * sizeof(int), cudaMemcpyHostToDevice);
 
-		// const int threadsPerBlock = 1024; // 최대 deviceProp.maxThreadsPerBlock = 1024 까지 가능
+		const int threadsPerBlock = 1024; // 최대 deviceProp.maxThreadsPerBlock = 1024 까지 가능
 		// int blocks = TODO; // 블럭 여러 개 사용
-		// addKernel <<<TODO, TODO>>> (dev_a, dev_b, dev_c, size);
 
-		// addKernel << <2, 4 >> > (dev_a, dev_b, dev_c, size);
+		// ceil() 올림 연산: 딱 떨어지지 않을 경우 +1해서, 더 많은 블럭으로 돌림(일을 더 함), 
+		// 단, 시행하는 커널 함수에서 if (i < size) 를 추가해서, 조건을 둠으로써, 불필요한 연산을 하지 않도록 막아줌
+		int blocks = int(ceil(float(size)/threadsPerBlock)); // 블럭 여러 개 사용, 
+		// addKernel <<<TODO, TODO>>> (dev_a, dev_b, dev_c, size);
+		// addKernel <<<블럭개수, 쓰래드개수>>> (dev_a, dev_b, dev_c, size);		
+
+		// addKernel <<<2, 4>> > (dev_a, dev_b, dev_c, size); // 블럭2개, 쓰래드4개 => 총 8개 쓰래드 사용
+		addKernel <<<blocks, threadsPerBlock>>> (dev_a, dev_b, dev_c, size);
 
 		// 안내: kernel 실행 후 cudaGetLastError() 생략
 

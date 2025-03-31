@@ -49,6 +49,7 @@ int main()
         int* dev_b = nullptr;
         int* dev_c = nullptr;
 
+        //.. 시간 측정: 변수 이벤트 세팅
         cudaEvent_t start, stop;// 시간 측정을 위한 CUDA 이벤트 생성 (시간측정도 Nsight로 할 수 있습니다.)
         cudaEventCreate(&start);
         cudaEventCreate(&stop);
@@ -60,18 +61,23 @@ int main()
         cudaMemcpy(dev_a, a.data(), size * sizeof(int), cudaMemcpyHostToDevice);
         cudaMemcpy(dev_b, b.data(), size * sizeof(int), cudaMemcpyHostToDevice);
 
+        //.. 시간 측정: 시작 시간 기록
         cudaEventRecord(start, 0); // 시작 시간 기록
 
         // 블럭 1개 x 쓰레드 size개
         addKernel << <1, size >> > (dev_a, dev_b, dev_c, size);
 
+        //.. 시간 측정: 끝 시간 기록
         cudaEventRecord(stop, 0);  // 끝나는 시간 기록
 
         cudaDeviceSynchronize();       // kernel이 끝날때까지 대기 (동기화)
         // cudaEventSynchronize(stop); // 불필요 (동기화 중복)
 
+        //.. 시간 측정 계산
         float milliseconds = 0;
         cudaEventElapsedTime(&milliseconds, start, stop); // 걸린 시간 계산
+        
+        //.. 시간 측정 출력
         cout << "Time elapsed: " << milliseconds << " ms" << endl;
 
         // 안내: kernel 실행 후 cudaGetLastError() 생략

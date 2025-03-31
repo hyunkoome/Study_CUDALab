@@ -14,5 +14,5 @@ set(CMAKE_CXX_STANDARD 17)
 # set_target_properties(Ex01_CpuMultithreading PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 add_executable(Ex01_CpuMultithreading Ex01_CpuMultithreading.cpp)
-# 🔥 pthread 라이브러리 추가 (std::thread 사용 시 필수)
+# pthread 라이브러리 추가 (std::thread 사용 시 필수)
 target_link_libraries(Ex01_CpuMultithreading pthread)
