@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "*.cu": "cpp",
-        "*.cuh": "cpp"
+        "*.cuh": "cpp",
+        "cmath": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "C_Cpp.default.includePath": [
