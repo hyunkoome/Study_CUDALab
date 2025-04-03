@@ -9,7 +9,7 @@
 #include <chrono>
 #include <string>
 
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 32 // GPU에 맞게 블럭사이즈를 조절하기!
 // 매크로를 바꿔가면서 셰이더를 여러 개 만들어서 사용하기도 합니다
 
 using namespace std;
@@ -109,9 +109,13 @@ __global__ void MatMulKernel(Matrix A, Matrix B, Matrix C) {
     // required to compute Csub
     // Multiply each pair of sub-matrices together
     // and accumulate the results
+    // 강의 그림에서는 (A.width / BLOCK_SIZE) == 2인 경우
     for (int m = 0; m < (A.width / BLOCK_SIZE); ++m) {
         Matrix Asub = GetSubMatrix(A, blockRow, m); // Get sub-matrix Asub of A
         Matrix Bsub = GetSubMatrix(B, m, blockCol); // Get sub-matrix Bsub of B
+
+        // 그래서, shared 메모리가 2개이고.
+        // Asub => As 2차원 배열로, Bsub => Bs 2차원 배열로
 
         // A와 B의 작은 부분을 임시로 저장하는 공유(__shared__) 메모리
         __shared__ float As[BLOCK_SIZE][BLOCK_SIZE]; // 컴파일할때 BLOCK_SIZE가 결정되어 있어야 하기
@@ -120,16 +124,28 @@ __global__ void MatMulKernel(Matrix A, Matrix B, Matrix C) {
 
         // Load Asub and Bsub from device memory to shared memory
         // Each thread loads one element of each sub-matrix
+        // As[row][col] = GetElement(TODO, TDOO, TODO)
+        // <-- 코드상으로는 마치 배열 하나를 복사하는 것 처럼 보이지만,
+        // 쓰래드 개수가 블럭사이즈 32 x 블럭사이즈 32 이기 때문에,
+        // A의 블럭을 하나 통채로 복사하고, B의 블럭을 하나 통채로 복사하는 것 처럼 실행이 됨
         // As[row][col] = GetElement(TODO, TDOO, TODO);
         // Bs[row][col] = GetElement(TODO, TODO, TODO);
+        As[row][col] = GetElement(Asub, row, col);
+        Bs[row][col] = GetElement(Bsub, row, col);
 
         // Synchronize to make sure the sub-matrices are loaded
         // before starting the computation
+        // 계산하는 블럭당 매트릭스 연산을 하기전에, 싱크스래드 함수로, 동기화를 하고
         __syncthreads();
 
         // Multiply Asub and Bsub together
+        // 실제로 곱해서 더하는 연산을 하고, 이때 블럭사이즈 만큼 루프를 돌고.
+        // As 의 row 와 Bs의 colum 을 dot product 후 더해서 결과를 c 에 저장
         // for (int e = 0; e < BLOCK_SIZE; ++e)
+        //    각 서브 블럭당 나온 c 결과를 누적해서 c에 더하면 최종 합이 됨
         //    Cvalue += TODO * TODO;
+        for (int e = 0; e < BLOCK_SIZE; ++e)
+            Cvalue += As[row][e] * Bs[e][col];
 
         // Synchronize to make sure that the preceding
         // computation is done before loading two new
