@@ -35,7 +35,7 @@ void timedRun(const string name, const function<void()> &func) {
 // CUDA C++ Programming Guide 3.2.4 Shared Memory
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=matrix%20multiply#shared-memory
 
-// CUDA에서도 구조체를 사용할 수 있습니다. 메모리에 가로로 한 줄씩 나열되어 있는 구조입니다.
+// **CUDA에서도 구조체를 사용할 수 있습니다.** 메모리에 가로로 한 줄씩 나열되어 있는 구조입니다.
 // Matrices are stored in row-major order: M(row, col) = *(M.elements + row * M.width + col)
 struct Matrix {
     int height = 0; // Number of rows
@@ -73,10 +73,17 @@ __global__ void MatMulKernel(Matrix A, Matrix B, Matrix C) {
     float Cvalue = 0;
 
     // TODO: CPU 버전 참고하세요.
-
+    // A의 가로줄 하나 * B의 세로줄 하나 => 각 원소들 곲해서 더하면 => C의 point 하나 값
+    // 따라서, A의 가로줄의 요소개수 == B의 세로줄의 요소 개수 임
     // C.elements[row * C.width + col] = Cvalue;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int e = 0; e < A.width; ++e)
+        Cvalue += A.elements[row * A.width + e] * B.elements[e * B.width + col];
+    C.elements[row * C.width + col] = Cvalue;
 
-    printf("%u %u %u %u %u %u", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
+    printf("%u %u %u %u %u %u", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x,
+           threadIdx.y);
 }
 
 int main() {
@@ -130,7 +137,11 @@ int main() {
         cudaMemcpy(d_B.elements, B.elements, d_B.width * d_B.height * sizeof(float),
                    cudaMemcpyHostToDevice);
 
-        dim3 dimBlock(32, 32, 1); // dimBlock.x * dimBlock.y * dimBlock.z <= 1024
+        // 가로방향으로도 쓰래드를 32개 구동시키고, 세로방향으로도 쓰래드를 32개 구동시킴
+        // dimBlock 이 아래에서.. 쓰래드 개수로 들어감
+        dim3 dimBlock(32, 32, 1); // dimBlock.x * dimBlock.y * dimBlock.z <= 1024 (== 32 x 32)
+        // 따라서, 결국, 1블럭당 1024개 쓰래드가 도는 것음
+
         dim3 dimGrid(d_C.width / dimBlock.x, d_C.height / dimBlock.y); // 나머지가 없다고 가정
 
         timedRun("MatMul(Simple)", [&]() {
