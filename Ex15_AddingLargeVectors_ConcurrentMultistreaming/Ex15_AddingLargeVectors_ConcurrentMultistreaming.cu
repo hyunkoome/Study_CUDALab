@@ -7,28 +7,34 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define CUDA_CHECK(call)                                                                           \
-    do {                                                                                           \
-        cudaError_t err = call;                                                                    \
-        if (err != cudaSuccess) {                                                                  \
-            fprintf(stderr, "CUDA error at %s:%d in %s: %s\n", __FILE__, __LINE__, __func__,       \
-                    cudaGetErrorString(err));                                                      \
-            exit(1);                                                                               \
-        }                                                                                          \
+#define CUDA_CHECK(call)                                                                     \
+    do                                                                                       \
+    {                                                                                        \
+        cudaError_t err = call;                                                              \
+        if (err != cudaSuccess)                                                              \
+        {                                                                                    \
+            fprintf(stderr, "CUDA error at %s:%d in %s: %s\n", __FILE__, __LINE__, __func__, \
+                    cudaGetErrorString(err));                                                \
+            exit(1);                                                                         \
+        }                                                                                    \
     } while (0)
 
 using namespace std;
 
-template <typename T> void printVector(const T *a, int size) {
+template <typename T>
+void printVector(const T *a, int size)
+{
     for (int i = 0; i < size; i++)
         cout << setw(3) << a[i];
     cout << endl;
 }
 
-__global__ void addKernel(const int *a, const int *b, int *c, int size) {
+__global__ void addKernel(const int *a, const int *b, int *c, int size)
+{
     // int i = threadIdx.x;
-
-    for (int j = 0; j < 1000; j++) {
+    // 1000번 돌린이유: 일부러 gpu에 일 많이 시켜서, nsight에서 그래프가 잘 보이게 하려고
+    for (int j = 0; j < 1000; j++)
+    {
 
         int i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -39,13 +45,14 @@ __global__ void addKernel(const int *a, const int *b, int *c, int size) {
     // printf("ThreadIdx(% u, % u, % u)\n", threadIdx.x, threadIdx.y, threadIdx.z);
 }
 
-int main() {
+int main()
+{
     const int threadsPerBlock = 1024; // 최대 deviceProp.maxThreadsPerBlock = 1024 까지 가능
 
     const int size = 1024 * 1024 * 512; // size가 너무 커서 한 번에 모두 계산할 수 없다고 가정
     // const int size = 40;
 
-    const int numSplits = 8; // 입출력 데이터를 몇 조각으로 나누는지
+    const int numSplits = 8;  // 입출력 데이터를 몇 조각으로 나누는지
     const int numStreams = 2; // 스트림을 몇 개 사용할 지 (stream 하나가 한 번에 하나의 split을 담당
     // num_splits == num_streams 이면 앞의 예제와 같습니다.
 
@@ -60,7 +67,8 @@ int main() {
     cudaMallocHost(&b, sizeof(int) * size);
     cudaMallocHost(&c, sizeof(int) * size);
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
         a[i] = rand() % 10;
         b[i] = rand() % 10;
         // a[i] = i;
@@ -78,8 +86,8 @@ int main() {
         vector<int *> dev_b(numStreams);
         vector<int *> dev_c(numStreams);
 
-        for (int s = 0; s < numStreams;
-             s++) { // GPU 메모리는 "전체 데이터 x num_streams / num_splits" 사용)
+        for (int s = 0; s < numStreams; s++)
+        {                                                             // GPU 메모리는 "전체 데이터 x num_streams / num_splits" 사용)
             cudaMalloc((void **)&dev_a[s], split_size * sizeof(int)); // size -> split_size
             cudaMalloc((void **)&dev_b[s], split_size * sizeof(int)); // size -> split_size
             cudaMalloc((void **)&dev_c[s], split_size * sizeof(int)); // size -> split_size
@@ -97,12 +105,13 @@ int main() {
         // 안내:
         // - 이번 예제는 빈칸이 없습니다. 자신의 컴퓨터 사양에 맞춰서 전송/실행이 겹치는 패턴을 만들어 보세요.
         // - 아래 코드의 핵심은 데이터 전송과 커널 실행을 따로 묶었다는 점입니다.
-
+        // 일 시키는 순서
         while (i <= numSplits) // i_split, i_stream 따로 사용
         {
-            for (int i_stream = 0; i_stream < numStreams; i_stream++) {
+            // 모든 스트림에게..데이터 전송을 쫙~ 시키고
+            for (int i_stream = 0; i_stream < numStreams; i_stream++)
+            {
                 int i_split = i + i_stream;
-
                 if (i > 0) // D2H 복사 (처음에는 받아올 데이터가 없음)
                 {
                     // cout << "C " << i_split - numStreams << " " << i_stream << endl;
@@ -111,7 +120,8 @@ int main() {
                                     streams[i_stream]);
                 }
 
-                if (i_split < numSplits) { // H2D 복사 (마지막에는 보낼 데이터가 없음)
+                if (i_split < numSplits)
+                { // H2D 복사 (마지막에는 보낼 데이터가 없음)
                     cudaMemcpyAsync(dev_a[i_stream], &a[i_split * split_size],
                                     split_size * sizeof(int), cudaMemcpyHostToDevice,
                                     streams[i_stream]); // size -> split_size
@@ -122,8 +132,10 @@ int main() {
                 }
             }
 
+            // 모든 스트림에게..커널이 일할걸 쫙~ 시키고
             if (i < numSplits)
-                for (int i_stream = 0; i_stream < numStreams; i_stream++) {
+                for (int i_stream = 0; i_stream < numStreams; i_stream++)
+                {
                     addKernel<<<blocks, threadsPerBlock, 0, streams[i_stream]>>>(
                         dev_a[i_stream], dev_b[i_stream], dev_c[i_stream], split_size);
 
@@ -143,14 +155,16 @@ int main() {
         // 안내: kernel 실행 후 cudaGetLastError() 생략
 
         // 결과 확인
-        if (size <= 40) { // size가 작을 경우에는 출력해서 확인
+        if (size <= 40)
+        { // size가 작을 경우에는 출력해서 확인
             printVector(a, size);
             printVector(b, size);
             printVector(c, size);
         }
 
         for (int i = 0; i < size; i++)
-            if (c[i] != a[i] + b[i]) {
+            if (c[i] != a[i] + b[i])
+            {
                 cout << "Wrong result" << endl;
                 return 1;
             }
@@ -160,7 +174,8 @@ int main() {
         cudaEventDestroy(start);
         cudaEventDestroy(stop);
 
-        for (int s = 0; s < numStreams; s++) {
+        for (int s = 0; s < numStreams; s++)
+        {
             cudaFree(dev_a[s]);
             cudaFree(dev_b[s]);
             cudaFree(dev_c[s]);
